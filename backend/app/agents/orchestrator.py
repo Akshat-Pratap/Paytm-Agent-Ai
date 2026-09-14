@@ -68,12 +68,16 @@ class OrchestratorAgent(Agent):
             CaseManagementTool.set_status(db, case_id, "COMMUNICATION"); self._step()
             C.execute(db, case_id, ctx)
             case = db.query(models.SupportCase).filter_by(case_id=case_id).first()
-            # NO duplicate refund + pending monitor both end as ESCALATED(WAITING) or RESOLVED(no-action)?
+            # NO duplicate refund + pending monitor both end as WAITING or RESOLVED(no-action)
             if decision == "NO_ACTION" and ctx.get("transaction", {}).get("refundExists"):
-                case.status = "RESOLVED"; case.resolved_at = datetime.utcnow(); db.commit(); self._step(False)
+                CaseManagementTool.set_status(db, case_id, "RESOLVED")
+                case = db.query(models.SupportCase).filter_by(case_id=case_id).first()
+                if case:
+                    case.resolved_at = datetime.utcnow(); db.commit()
+                self._step(False)
                 CaseManagementTool.add_event(db, case_id, "resolved", "orchestrator", "Case resolved — refund already existed, no duplicate issued.")
                 return self._finish(db, case_id, ex, {"outcome": "RESOLVED", "decision": decision})
-            case.status = "WAITING"; db.commit()
+            CaseManagementTool.set_status(db, case_id, "WAITING")
             CaseManagementTool.add_event(db, case_id, "waiting", "orchestrator", "Case parked: monitoring pending payment.")
             return self._finish(db, case_id, ex, {"outcome": "WAITING", "decision": decision})
 
@@ -91,22 +95,25 @@ class OrchestratorAgent(Agent):
             Esc.execute(db, case_id, ctx)
             return self._finish(db, case_id, ex, {"outcome": "ESCALATED"})
 
-        # 6 refund
+        # 6 refund — any non-SUCCESS must escalate immediately (no fallthrough)
         CaseManagementTool.set_status(db, case_id, "REFUND_PROCESSING"); self._step()
         r6 = Ref.execute(db, case_id, ctx)
-        if r6["status"] == "FAILED" or ctx.get("refund", {}).get("status") != "SUCCESS":
-            # idempotent replay counts as success
-            if not ctx.get("refund"):
-                ctx.update(escalation_reason="Refund execution failed after retries.", escalation_recommendation="Retry manually / contact gateway ops.")
-                Esc.execute(db, case_id, ctx)
-                return self._finish(db, case_id, ex, {"outcome": "ESCALATED"})
+        refund = ctx.get("refund") or {}
+        if r6["status"] == "FAILED" or refund.get("status") != "SUCCESS" or not refund.get("refundId"):
+            # idempotent replay with SUCCESS counts as success (handled inside RefundAgent);
+            # everything else escalates here instead of falling through to post-verify.
+            ctx.update(escalation_reason="Refund execution failed after retries.", escalation_recommendation="Retry manually / contact gateway ops.")
+            Esc.execute(db, case_id, ctx)
+            return self._finish(db, case_id, ex, {"outcome": "ESCALATED"})
 
         # 7 post-refund verification (never trust attempt alone)
         CaseManagementTool.set_status(db, case_id, "REFUND_VERIFICATION"); self._step()
-        chk = RefundStatusTool.run(db, case_id, ctx["refund"]["refundId"])
-        if chk.get("status") == "SUCCESS":
+        chk = RefundStatusTool.run(db, case_id, refund["refundId"])
+        if chk.get("status") == "SUCCESS" and chk.get("amount_matches", True):
+            CaseManagementTool.set_status(db, case_id, "RESOLVED")
             case = db.query(models.SupportCase).filter_by(case_id=case_id).first()
-            case.status = "RESOLVED"; case.resolved_at = datetime.utcnow(); db.commit()
+            if case:
+                case.resolved_at = datetime.utcnow(); db.commit()
             ctx["comm_phase"] = "post-refund"
             C.execute(db, case_id, ctx)
             CaseManagementTool.add_event(db, case_id, "resolved", "orchestrator",
