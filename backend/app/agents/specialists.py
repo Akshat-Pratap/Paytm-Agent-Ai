@@ -191,6 +191,23 @@ class RefundAgent(Agent):
                    "amount": last["amount"], "status": last["status"],
                    "timestamp": __import__("datetime").datetime.utcnow().isoformat()}
             ctx["refund"] = out
+            # Synthetic refund txn counted in history: "Refunded to Bank"
+            if out["status"] == "SUCCESS":
+                try:
+                    orig = db.query(models.Transaction).filter_by(transaction_id=t["transactionId"]).first()
+                    synth_id = f"{t['transactionId']}-RFND"
+                    if orig and not db.query(models.Transaction).filter_by(transaction_id=synth_id).first():
+                        import random as _r
+                        db.add(models.Transaction(
+                            transaction_id=synth_id, user_id=orig.user_id,
+                            merchant_name="Refunded to Bank", amount=orig.amount,
+                            status="SUCCESS", debited=False, merchant_credited=False,
+                            settlement_status="REFUNDED", payment_method=orig.payment_method,
+                            sender_masked=orig.sender_masked,
+                            utr_number=f"UTR{''.join(str(_r.randint(0,9)) for _ in range(12))}"))
+                        db.commit()
+                except Exception:
+                    db.rollback()
             st = "COMPLETED" if out["status"] == "SUCCESS" else "FAILED"
             return self._finish(db, case_id, ex, out, RefundExecutionTool.name, st,
                                 "" if st == "COMPLETED" else last.get("failure_reason", "gateway failure"))

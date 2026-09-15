@@ -67,3 +67,30 @@ class AgentExecutionResult(BaseModel):
 class HumanActionRequest(BaseModel):
     action: str  # APPROVE | REJECT | CLOSE
     note: str = ""
+    admin_role: Optional[str] = None  # admin (single role now)
+
+
+class AuditLogOut(BaseModel):
+    id: int
+    case_id: str
+    admin_role: str
+    action: str
+    note: str = ""
+    timestamp: Optional[str] = None
+
+
+# Customer phone auth (register/login)
+class CustomerRegisterRequest(BaseModel):
+    phone: str = Field(..., description="+91 10-digit, with or without prefix")
+    name: str = Field(..., min_length=2, max_length=120)
+    password: str = Field(..., min_length=6, max_length=72)
+
+
+class CustomerLoginRequest(BaseModel):
+    phone: str
+    password: str
+
+
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str

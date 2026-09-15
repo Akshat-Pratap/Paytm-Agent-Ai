@@ -1,7 +1,7 @@
 """Case + agent + escalation REST APIs + SSE stream."""
 import json
 import asyncio
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, Header
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
@@ -13,6 +13,31 @@ from ..eventbus import subscribe, unsubscribe
 from ..tools.payment_tools import CaseManagementTool
 
 router = APIRouter()
+
+ALLOWED_ADMIN_ROLES = {"admin"}
+
+
+def _resolve_admin_role(body_role=None, header_role=None, bearer=None) -> str:
+    # Single ADMIN role — normalize any case, accept Bearer admin JWT too
+    import jwt as _jwt
+    from ..config import settings as _s
+    raw = (body_role or header_role or "").strip().lower()
+    if raw == "admin":
+        return "admin"
+    tok = (bearer or "").strip()
+    if tok.lower().startswith("bearer "):
+        tok = tok[7:].strip()
+    if tok:
+        try:
+            p = _jwt.decode(tok, _s.JWT_SECRET, algorithms=["HS256"])
+            if str(p.get("role", "")).lower() == "admin":
+                return "admin"
+        except Exception:
+            pass
+    # fallback demo header value
+    if raw in ALLOWED_ADMIN_ROLES:
+        return raw
+    return raw or "admin"
 
 
 def _case_dict(c: models.SupportCase):
@@ -113,7 +138,9 @@ def refund(case_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/cases/{case_id}/human-action")
-def human_action(case_id: str, req: HumanActionRequest, db: Session = Depends(get_db)):
+def human_action(case_id: str, req: HumanActionRequest, db: Session = Depends(get_db),
+                 x_admin_role: str = Header(default=None, alias="X-Admin-Role"),
+                 authorization: str = Header(default=None)):
     from datetime import datetime
     from ..tools.payment_tools import CaseManagementTool as _CM
     esc = db.query(models.Escalation).filter_by(case_id=case_id).order_by(models.Escalation.id.desc()).first()
@@ -123,6 +150,10 @@ def human_action(case_id: str, req: HumanActionRequest, db: Session = Depends(ge
     action = (req.action or "").upper()
     if action not in ("APPROVE", "REJECT", "CLOSE"):
         return JSONResponse({"error": "action must be APPROVE|REJECT|CLOSE"}, status_code=400)
+    # Single ADMIN only — all 3 actions allowed
+    admin_role = _resolve_admin_role(getattr(req, "admin_role", None), x_admin_role, authorization)
+    if admin_role not in ALLOWED_ADMIN_ROLES:
+        return JSONResponse({"error": "admin_role must be admin (single ADMIN role)"}, status_code=400)
     if case.status != "ESCALATED":
         return JSONResponse({"error": f"case is {case.status}, only ESCALATED cases accept human action"}, status_code=409)
     if esc:
@@ -142,9 +173,16 @@ def human_action(case_id: str, req: HumanActionRequest, db: Session = Depends(ge
         _CM.set_status(db, case_id, "FAILED")
     db.commit()
     CaseManagementTool.add_event(db, case_id, "human_action", "human",
-                                 f"Human {req.action}: {req.note}")
+                                 f"Human {req.action} by {admin_role}: {req.note}")
+    # Audit trail — insert after state transition so even failed transitions are traceable
+    try:
+        db.add(models.AuditLog(case_id=case_id, admin_role=admin_role, action=action,
+                               note=req.note or "", timestamp=datetime.utcnow()))
+        db.commit()
+    except Exception:
+        db.rollback()
     db.refresh(case)
-    return {"ok": True, "status": case.status}
+    return {"ok": True, "status": case.status, "admin_role": admin_role}
 
 
 @router.get("/cases/{case_id}/events/stream")

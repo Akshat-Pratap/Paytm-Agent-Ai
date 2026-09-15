@@ -13,8 +13,10 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     name = Column(String(120), nullable=False)
-    email = Column(String(160), unique=True, nullable=False)
-    phone = Column(String(20), nullable=True)
+    email = Column(String(160), unique=True, nullable=True)
+    phone = Column(String(20), unique=True, nullable=True, index=True)
+    password_hash = Column(Text, nullable=True)
+    role = Column(String(16), default="customer")  # customer | admin
     created_at = Column(DateTime, default=_now)
 
 
@@ -33,6 +35,7 @@ class Transaction(Base):
     merchant_credited = Column(Boolean, default=False)
     settlement_status = Column(String(16), default="NOT_SETTLED")
     sender_masked = Column(String(32), default="XXXX-XXXX-1234")
+    utr_number = Column(String(32), unique=True, nullable=True, index=True)
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, default=_now, onupdate=_now)
 
@@ -126,3 +129,15 @@ class Escalation(Base):
     recommended_action = Column(Text, default="Manual review required")
     created_at = Column(DateTime, default=_now)
     resolved_at = Column(DateTime, nullable=True)
+
+
+class AuditLog(Base):
+    """Admin action audit trail: who did what to which case and when."""
+    __tablename__ = "audit_logs"
+    id = Column(Integer, primary_key=True)
+    case_id = Column(String(32), index=True, nullable=False)
+    admin_role = Column(String(32), nullable=False, default="admin")
+    action = Column(String(16), nullable=False)  # APPROVE|REJECT|CLOSE
+    note = Column(Text, default="")
+    timestamp = Column(DateTime, default=_now, index=True)
+    created_at = Column(DateTime, default=_now)

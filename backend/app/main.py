@@ -5,6 +5,9 @@ from .config import settings
 from .database import Base, engine, SessionLocal
 from . import models  # noqa: F401  (register tables)
 from .api.routes_cases import router as cases_router
+from .api.routes_admin import router as admin_router
+from .api.routes_auth import router as auth_router
+from .api.routes_customer import router as customer_router
 from .api.routes_misc import mock as mock_router, dash as dash_router
 
 Base.metadata.create_all(bind=engine)
@@ -20,6 +23,9 @@ app = FastAPI(title=settings.APP_NAME, version="1.0.0",
 app.add_middleware(CORSMiddleware, allow_origins=[o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()],
                    allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(cases_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(customer_router, prefix="/api")
 app.include_router(mock_router, prefix="/api")
 app.include_router(dash_router, prefix="/api")
 

@@ -30,6 +30,7 @@ class TransactionLookupTool:
                 "merchant_credited": txn.merchant_credited,
                 "settlement_status": txn.settlement_status,
                 "sender_masked": txn.sender_masked,
+                "utr_number": txn.utr_number,
                 "user_id": txn.user_id,
                 "created_at": txn.created_at.isoformat() if txn.created_at else "",
                 "refundExists": bool(refund),
