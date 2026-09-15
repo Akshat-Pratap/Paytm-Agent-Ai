@@ -8,10 +8,7 @@ function initial() {
     const saved = localStorage.getItem(KEY);
     if (saved === 'light' || saved === 'dark') return saved;
   } catch {}
-  try {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
-  } catch {}
-  return 'dark';
+  return 'light';
 }
 
 export function ThemeProvider({ children }) {
@@ -24,7 +21,7 @@ export function ThemeProvider({ children }) {
     document.documentElement.dataset.theme = theme;
     try {
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', theme === 'light' ? '#f4f6fb' : '#060b18');
+      if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#f8f9fb');
     } catch {}
   }, [theme]);
 
