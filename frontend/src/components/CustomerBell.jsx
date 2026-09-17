@@ -24,7 +24,7 @@ export default function CustomerBell() {
           const unsub = subscribeEvents(id, (m) => {
             if (stop) return;
             setEvents((p) => [{ case_id: id, ...m }, ...p].slice(0, 40));
-            push(`${m.message || m.event_type} — ${id}`, m.event_type === 'resolved' ? 'ok' : 'info');
+            push(`${m.message || m.event_type} — ${id}`, m.event_type === 'resolved' ? 'ok' : 'info', { scope: 'customer', title: m.event_type === 'resolved' ? 'Refund completed' : 'Case update' });
           });
           subs.current.push(unsub);
         }

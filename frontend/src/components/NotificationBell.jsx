@@ -22,7 +22,7 @@ export default function NotificationBell() {
         setCount(Array.isArray(list) ? list.length : 0);
         if (Array.isArray(list) && list.length > prev.current && prev.current > 0) {
           const n = list[0];
-          push(`New escalation: ${n.case_id || 'Case'}`, 'warn');
+          push(`New escalation: ${n.case_id || 'Case'}`, 'warn', { scope: 'admin', title: 'New escalation' });
         }
         prev.current = Array.isArray(list) ? list.length : 0;
       } catch {}

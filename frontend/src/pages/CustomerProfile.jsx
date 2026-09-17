@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { getCustomerProfile, updateCustomerProfile } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
+import RollButton from '../components/RollButton.jsx';
+import { BentoGrid, BentoItem } from '../components/Bento.jsx';
 
 export default function CustomerProfile() {
   const { loginCustomer } = useAuth();
@@ -23,14 +25,15 @@ export default function CustomerProfile() {
     try {
       const r = await updateCustomerProfile(payload);
       if (r.token && r.user) loginCustomer(r.token, r.user);
-      push('Profile updated', 'ok');
+      push('Profile updated', 'ok', { scope: 'customer', title: 'Saved' });
       setForm((f) => ({ ...f, password: '' }));
     } catch (ex) { setErr(ex?.response?.data?.error || 'Update failed'); }
     setBusy(false);
   }
   return (
     <div className="wrap narrow animate-in">
-      <div className="card">
+      <BentoGrid>
+      <BentoItem className="card">
         <h3>Profile — Editable</h3>
         <p className="mut small">Update name, +91 phone (10 digits 6-9…), or password. Stored in <b>users</b> table (SQLite/Postgres).</p>
         <form onSubmit={submit}>
@@ -41,9 +44,10 @@ export default function CustomerProfile() {
           <label className="lbl" htmlFor="ppw">New password (leave blank to keep)</label>
           <input id="ppw" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min 6 chars" />
           {err && <div className="err">{err}</div>}
-          <button className="btn" type="submit" disabled={busy} style={{ marginTop: 10, width: '100%' }}>{busy ? 'Saving…' : 'Save'}</button>
+          <RollButton className="btn" type="submit" disabled={busy} style={{ marginTop: 10, width: '100%' }}>{busy ? 'Saving…' : 'Save'}</RollButton>
         </form>
-      </div>
+      </BentoItem>
+      </BentoGrid>
     </div>
   );
 }

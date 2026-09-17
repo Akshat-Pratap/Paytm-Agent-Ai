@@ -5,6 +5,6 @@ import { useAuth } from '../context/AuthContext.jsx';
 export default function RequireCustomer({ children }) {
   const { customerToken, isLoggingOut } = useAuth();
   if (isLoggingOut) return null;
-  if (!customerToken) return <Navigate to="/?auth=1" replace />;
+  if (!customerToken) return <Navigate to="/auth" replace />;
   return children;
 }

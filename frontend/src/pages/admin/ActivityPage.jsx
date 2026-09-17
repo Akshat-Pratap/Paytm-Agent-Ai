@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { listCases, getEvents } from '../../services/api.js';
 import ActivityFeed from '../../components/ActivityFeed.jsx';
 import Timeline from '../../components/Timeline.jsx';
+import { BentoGrid, BentoItem } from '../../components/Bento.jsx';
 
 export default function ActivityPage() {
   const [events, setEvents] = useState([]);
@@ -26,14 +27,18 @@ export default function ActivityPage() {
   }, []);
   return (
     <div className="animate-in">
-      <div className="hero compact">
-        <div><span className="badge">ADMIN · ACTIVITY</span><h1>Agent Activity</h1><p>Live feed aggregated from recent cases — moved from showcase.</p></div>
-      </div>
-      {loading ? <div className="card skeleton" style={{ height: 120 }} /> : <ActivityFeed />}
-      <div className="card">
-        <h3>Recent events ({events.length})</h3>
-        <Timeline events={events} agents={[]} live={[]} />
-      </div>
+      <BentoGrid>
+        <BentoItem className="hero compact" hover={false}>
+          <div><span className="badge">ADMIN · ACTIVITY</span><h1>Agent Activity</h1><p>Live feed aggregated from recent cases — moved from showcase.</p></div>
+        </BentoItem>
+      </BentoGrid>
+      <BentoGrid>
+        {loading ? <div className="card skeleton" style={{ height: 120 }} /> : <ActivityFeed />}
+        <BentoItem className="card">
+          <h3>Recent events ({events.length})</h3>
+          <Timeline events={events} agents={[]} live={[]} />
+        </BentoItem>
+      </BentoGrid>
     </div>
   );
 }

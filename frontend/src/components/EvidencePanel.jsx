@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { bentoItem } from './Bento.jsx';
 
 export default function EvidencePanel({ why, txn, risk }) {
   const [open, setOpen] = useState(true);
   return (
-    <div className="card">
+    <motion.div
+      className="card bento-item"
+      variants={bentoItem}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: '-60px' }}
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+    >
       <button className="collhead" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <h3 style={{ margin: 0 }}>Why did the AI decide this? (auditable explanation)</h3>
         <span aria-hidden="true">{open ? '▾' : '▸'}</span>
@@ -15,6 +24,6 @@ export default function EvidencePanel({ why, txn, risk }) {
           refund {txn.refund_status} · risk {risk.risk_score} ({risk.risk_level})
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

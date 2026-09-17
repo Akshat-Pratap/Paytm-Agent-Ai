@@ -1,4 +1,7 @@
 import React from 'react';
+import { motion } from 'motion/react';
+import { bentoContainer, bentoItem } from './Bento.jsx';
+import BorderBeam from './BorderBeam.jsx';
 
 const AGENTS = [
   { key: 'detect', name: 'Detect', duty: 'Capture payment failure', icon: '◉' },
@@ -12,7 +15,15 @@ const AGENTS = [
 
 export default function AgentStrip() {
   return (
-    <section id="agents" className="agents-section">
+    <BorderBeam duration={7}>
+    <motion.section
+      id="agents"
+      className="agents-section bento-item"
+      variants={bentoItem}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: '-60px' }}
+    >
       <div className="agents-header">
         <div>
           <h2>7 AI Agents. One Recovery System.</h2>
@@ -20,19 +31,30 @@ export default function AgentStrip() {
         </div>
         <span className="badge">LIVE SYSTEM</span>
       </div>
-      <div className="agent-strip">
+      <motion.div
+        className="agent-strip"
+        variants={bentoContainer}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: '-60px' }}
+      >
         {AGENTS.map((a, i) => (
           <React.Fragment key={a.key}>
-            <div className="agent-card">
+            <motion.div
+              className="agent-card"
+              variants={bentoItem}
+              whileHover={{ y: -3, transition: { duration: 0.2 } }}
+            >
               <div className="agent-icon">{a.icon}</div>
               <b>{a.name}</b>
               <p>{a.duty}</p>
               <span className="small" style={{ color: 'var(--grn)', fontWeight: 600 }}>● Active</span>
-            </div>
+            </motion.div>
             {i < AGENTS.length - 1 && <div className="agent-arrow">→</div>}
           </React.Fragment>
         ))}
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
+    </BorderBeam>
   );
 }

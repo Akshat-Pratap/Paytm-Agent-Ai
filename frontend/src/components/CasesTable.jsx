@@ -1,4 +1,7 @@
 import React from 'react';
+import { motion } from 'motion/react';
+import { bentoItem } from './Bento.jsx';
+import StatsCounter from './StatsCounter.jsx';
 
 const SAMPLE = [
   { case: 'CASE-1021', customer: 'Aarav Sharma', reason: 'UPI Timeout', risk: 'Low', agent: 'Risk', status: 'Investigating', amount: '₹2,000', updated: '2 min ago' },
@@ -15,10 +18,18 @@ function riskDot(risk) {
 
 export default function CasesTable() {
   return (
-    <div id="cases" className="card">
+    <motion.div
+      id="cases"
+      className="card bento-item"
+      variants={bentoItem}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: '-60px' }}
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h3 style={{ margin: 0 }}>Recent Payment Cases</h3>
-        <span className="small" style={{ color: 'var(--mut)' }}>{SAMPLE.length} cases</span>
+        <span className="small" style={{ color: 'var(--mut)' }}><StatsCounter value={SAMPLE.length} /> cases</span>
       </div>
       <div className="tablewrap">
         <table className="tbl">
@@ -39,6 +50,6 @@ export default function CasesTable() {
           </tbody>
         </table>
       </div>
-    </div>
+    </motion.div>
   );
 }

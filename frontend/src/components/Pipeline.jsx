@@ -1,4 +1,6 @@
 import React from 'react';
+import { motion } from 'motion/react';
+import { bentoContainer, bentoItem } from './Bento.jsx';
 
 const STEPS = [
   { label: 'Payment Failed', sub: 'Trigger' },
@@ -12,20 +14,33 @@ const STEPS = [
 
 export default function Pipeline() {
   return (
-    <div className="card">
+    <motion.div
+      className="card bento-item"
+      variants={bentoItem}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: '-60px' }}
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+    >
       <h3>Payment Recovery Pipeline</h3>
-      <div className="pipeline">
+      <motion.div
+        className="pipeline"
+        variants={bentoContainer}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: '-60px' }}
+      >
         {STEPS.map((s, i) => (
           <React.Fragment key={s.label}>
-            <div className="pipeline-step">
+            <motion.div className="pipeline-step" variants={bentoItem}>
               <div className={`pipeline-dot ${i < STEPS.length - 1 ? 'done' : 'active'}`}>{i + 1}</div>
               <div className="pipeline-label">{s.label}</div>
               <div className="pipeline-sub">{s.sub}</div>
-            </div>
+            </motion.div>
             {i < STEPS.length - 1 && <div className="pipeline-line" />}
           </React.Fragment>
         ))}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

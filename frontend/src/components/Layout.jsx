@@ -1,19 +1,22 @@
 import React, { useState } from 'react';
-import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { motion, useScroll, useMotionValueEvent } from 'motion/react';
 import { useTheme } from '../theme.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import NotificationBell from './NotificationBell.jsx';
 import CustomerBell from './CustomerBell.jsx';
-import CustomerAuthModal from './CustomerAuthModal.jsx';
+import DashboardBackground from './DashboardBackground.jsx';
+import RollButton from './RollButton.jsx';
 
 export default function Layout({ children }) {
   const { theme, toggle } = useTheme();
-  const { isAdmin, customerToken, customer, logoutAll, endLogout, isLoggingOut } = useAuth();
+  const { isAdmin, customerToken, customer, logoutAll, endLogout } = useAuth();
   const nav = useNavigate();
-  const loc = useLocation();
-  const [authOpen, setAuthOpen] = useState(false);
   const [ticketCount, setTicketCount] = useState(null);
-  const isDash = loc.pathname === '/';
+  const [shrunk, setShrunk] = useState(false);
+  const { scrollY } = useScroll();
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  useMotionValueEvent(scrollY, 'change', (v) => setShrunk(v > 32));
 
   React.useEffect(() => {
     if (!customerToken) { setTicketCount(null); return; }
@@ -30,19 +33,16 @@ export default function Layout({ children }) {
     return () => { stop = true; clearInterval(id); };
   }, [customerToken]);
 
-  React.useEffect(() => {
-    if (isLoggingOut) return;
-    if (new URLSearchParams(loc.search).get('auth') === '1' && !customerToken) setAuthOpen(true);
-  }, [loc.search, customerToken, isLoggingOut]);
-
-  function handleAuthClose(didAuth) {
-    setAuthOpen(false);
-    if (didAuth) nav('/customer', { replace: true });
-  }
-
   return (
-    <div className="wrap">
-      <header className="topbar">
+    <>
+      <DashboardBackground />
+      <motion.header
+        className={`topbar${shrunk ? ' shrunk' : ''}`}
+        initial={false}
+        animate={{ height: reduceMotion ? 64 : shrunk ? 48 : 64 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      >
+        <div className="topbar-inner">
         <div className="nav-left">
           <Link to="/" className="brand">
             <div className="logo" aria-hidden="true">AR</div>
@@ -73,7 +73,7 @@ export default function Layout({ children }) {
         </div>
         <nav className="top-actions" aria-label="Primary">
           {!customerToken && !isAdmin && (
-            <button className="btn" onClick={() => setAuthOpen(true)}>Login / Sign up</button>
+            <RollButton className="btn" onClick={() => nav('/auth')}>Login / Sign up</RollButton>
           )}
           {customerToken && !isAdmin && <span className="pill">{customer.name || customer.phone || 'customer'}</span>}
           {isAdmin && <span className="pill" style={{ borderColor: 'var(--blue)', color: 'var(--blue)' }}>ADMIN</span>}
@@ -81,11 +81,13 @@ export default function Layout({ children }) {
           <button className="btn ghost theme-toggle" onClick={toggle} aria-pressed={theme === 'dark'} aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'} title={theme === 'dark' ? 'Light' : 'Dark'}>
             <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
           </button>
-          {(isAdmin || customerToken) && <button className="btn ghost" onClick={() => { logoutAll(); setAuthOpen(false); nav('/#overview', { replace: true }); requestAnimationFrame(() => document.getElementById('overview')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); setTimeout(() => endLogout(), 800); }}>Logout</button>}
+          {(isAdmin || customerToken) && <RollButton className="btn ghost" onClick={() => { logoutAll(); nav('/#overview', { replace: true }); requestAnimationFrame(() => document.getElementById('overview')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); setTimeout(() => endLogout(), 800); }}>Logout</RollButton>}
         </nav>
-      </header>
+        </div>
+      </motion.header>
+      <div className="wrap">
       {children}
-      <CustomerAuthModal open={authOpen} onClose={handleAuthClose} />
-    </div>
+      </div>
+    </>
   );
 }

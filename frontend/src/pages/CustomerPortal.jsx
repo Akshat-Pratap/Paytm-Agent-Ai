@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createCase, getCase, getAgents, getEvents, getTxn, getRisk, getRefund, subscribeEvents, getCustomerFailed } from '../services/api.js';
 import Timeline from '../components/Timeline.jsx';
+import RollButton from '../components/RollButton.jsx';
 import EvidencePanel from '../components/EvidencePanel.jsx';
+import { BentoGrid, BentoItem } from '../components/Bento.jsx';
 import { useToast } from '../components/Toast.jsx';
 
 const AGENTS = ['orchestrator', 'transaction', 'risk', 'resolution', 'communication', 'verification', 'refund', 'escalation'];
@@ -42,7 +44,7 @@ export default function CustomerPortal() {
       setAgents(a); setEvents(e); setTxnInfo(t); setRisk(r); setRefund(f);
       if (c?.status) {
         setStatus(c.status);
-        if (c.status === 'RESOLVED') push(`Refund completed for ${id}`, 'ok');
+        if (c.status === 'RESOLVED') push(`Refund completed for ${id}`, 'ok', { scope: 'customer', title: 'Refund completed' });
       }
       const res = a.find((x) => x.agent === 'resolution');
       if (res?.output) {
@@ -60,10 +62,10 @@ export default function CustomerPortal() {
       setCaseId(c.case_id); setStatus(c.status);
       unsub.current = subscribeEvents(c.case_id, (m) => {
         setLive((p) => [...p.slice(-200), m]);
-        if (/escalat/i.test(m.message || '')) push(`Update on ${c.case_id}: under review`, 'warn');
+        if (/escalat/i.test(m.message || '')) push(`Update on ${c.case_id}: under review`, 'warn', { scope: 'customer', title: 'Under review' });
       });
       await refresh(c.case_id);
-    } catch { push('Backend not reachable on :8000', 'err'); }
+    } catch { push('Backend not reachable on :8000', 'err', { scope: 'customer', title: 'Connection failed' }); }
     setLoading(false);
   }
 
@@ -73,16 +75,18 @@ export default function CustomerPortal() {
 
   return (
     <div className="animate-in">
-      <div className="hero compact">
-        <div>
-          <span className="badge">CUSTOMER PORTAL · LIVE</span>
-          <h1 style={{ fontSize: 'clamp(22px,3vw,30px)' }}>Report a failed payment</h1>
-          <p>Describe the issue — agents investigate and refund when safe.</p>
-        </div>
-        <div className="hero-actions">
-          <button className="btn" onClick={() => run()} disabled={loading}>{loading ? 'Resolving…' : 'Resolve Automatically'}</button>
-        </div>
-      </div>
+      <BentoGrid>
+        <BentoItem className="hero compact" hover={false}>
+          <div>
+            <span className="badge">CUSTOMER PORTAL · LIVE</span>
+            <h1 style={{ fontSize: 'clamp(22px,3vw,30px)' }}>Report a failed payment</h1>
+            <p>Describe the issue — agents investigate and refund when safe.</p>
+          </div>
+          <div className="hero-actions">
+            <RollButton className="btn" onClick={() => run()} disabled={loading}>{loading ? 'Resolving…' : 'Resolve Automatically'}</RollButton>
+          </div>
+        </BentoItem>
+      </BentoGrid>
 
       {isResolved && (
         <div className="banner ok" role="status">
@@ -94,9 +98,9 @@ export default function CustomerPortal() {
         <div className="banner warn" role="status">Escalated to admin team — our specialists are reviewing it. No further action needed from you.</div>
       )}
 
-      <div className="grid">
+      <BentoGrid className="grid">
         <div>
-          <div className="card">
+          <BentoItem className="card">
             <h3>Customer Support Interface {caseId && `· ${caseId} · ${status}`}</h3>
             {failedList.length > 0 && (
               <div style={{ marginBottom: 10 }}>
@@ -111,12 +115,12 @@ export default function CustomerPortal() {
             )}
             <textarea rows={3} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Describe your problem..." />
             <input value={txn} onChange={(e) => setTxn(e.target.value)} placeholder="Transaction ID (optional)" />
-            <button className="btn" disabled={loading} onClick={() => run()}>{loading ? 'Resolving…' : 'Resolve'}</button>
-          </div>
+            <RollButton className="btn" disabled={loading} onClick={() => run()}>{loading ? 'Resolving…' : 'Resolve'}</RollButton>
+          </BentoItem>
 
           {!isEscalated && (
             <>
-              <div className="card">
+              <BentoItem className="card">
                 <h3>Live Agent Timeline</h3>
                 <div className="agentgrid">{AGENTS.map((a) => (
                   <div className="agent" key={a}>
@@ -125,11 +129,11 @@ export default function CustomerPortal() {
                     <div className="tool">{agents.find((x) => x.agent === a)?.tool_used || ''}</div>
                   </div>))}
                 </div>
-              </div>
-              <div className="card">
+              </BentoItem>
+              <BentoItem className="card">
                 <h3>Agent Activity Timeline (real-time)</h3>
                 <Timeline agents={agents} events={events} live={live} />
-              </div>
+              </BentoItem>
               <EvidencePanel why={why} txn={txnInfo} risk={risk} />
             </>
           )}
@@ -138,25 +142,25 @@ export default function CustomerPortal() {
         <div>
           {!isEscalated ? (
             <>
-              <div className="card"><h3>Transaction Panel</h3>
+              <BentoItem className="card"><h3>Transaction Panel</h3>
                 {[['Transaction ID', txnInfo.transaction_id], ['Amount', txnInfo.amount && `₹${Number(txnInfo.amount).toLocaleString('en-IN')}`], ['Method', txnInfo.payment_method], ['Merchant', txnInfo.merchant], ['Status', txnInfo.status], ['Debited', String(txnInfo.debited ?? '')], ['Merchant credited', String(txnInfo.merchant_credited ?? '')], ['Settlement', txnInfo.settlement_status], ['Refund', `${txnInfo.refund_status || ''} ${txnInfo.refund_id || ''}`]].map(([k, v]) => <div className="kv" key={k}><span>{k}</span><b>{v}</b></div>)}
-              </div>
-              <div className="card"><h3>Risk Panel</h3>
+              </BentoItem>
+              <BentoItem className="card"><h3>Risk Panel</h3>
                 <div>Risk Score: <b>{risk.risk_score ?? '–'}/100 ({risk.risk_level})</b></div>
                 <div className="riskbar"><i style={{ width: `${risk.risk_score || 0}%` }} /></div>
                 <div>Automatic Resolution: <b>{risk.automatic_resolution_allowed ? 'ALLOWED' : 'BLOCKED'}</b></div>
                 {(risk.reasons || []).map((r, i) => <div key={i} className="reason">✓ {r}</div>)}
-              </div>
-              <div className="card"><h3>Refund Panel</h3>
+              </BentoItem>
+              <BentoItem className="card"><h3>Refund Panel</h3>
                 {[['Refund ID', refund.refund_id], ['Amount', refund.amount && `₹${Number(refund.amount).toLocaleString('en-IN')}`], ['Status', refund.status], ['Case', status]].map(([k, v]) => <div className="kv" key={k}><span>{k}</span><b>{v}</b></div>)}
                 {refund.failure_reason && <div className="err">{refund.failure_reason}</div>}
-              </div>
+              </BentoItem>
             </>
           ) : (
-            <div className="card"><h3>Case Status</h3><p className="mut">Hidden while under admin review.</p></div>
+            <BentoItem className="card"><h3>Case Status</h3><p className="mut">Hidden while under admin review.</p></BentoItem>
           )}
         </div>
-      </div>
+      </BentoGrid>
     </div>
   );
 }

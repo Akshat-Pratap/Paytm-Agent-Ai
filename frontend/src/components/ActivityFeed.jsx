@@ -1,4 +1,6 @@
 import React from 'react';
+import { motion } from 'motion/react';
+import { bentoContainer, bentoItem } from './Bento.jsx';
 
 export default function ActivityFeed() {
   const items = [
@@ -8,19 +10,32 @@ export default function ActivityFeed() {
     { text: 'Safety Gate blocked automatic refund — escalated', time: '7 min ago' },
   ];
   return (
-    <div className="card">
+    <motion.div
+      className="card bento-item"
+      variants={bentoItem}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: '-60px' }}
+      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ marginBottom: 0 }}>Agent Activity</h3>
         <span style={{ width: 8, height: 8, borderRadius: 999, background: 'var(--grn)', display: 'inline-block' }} title="Live" />
       </div>
-      <div style={{ marginTop: 12 }}>
+      <motion.div
+        style={{ marginTop: 12 }}
+        variants={bentoContainer}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: '-60px' }}
+      >
         {items.map((it) => (
-          <div key={it.text} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid color-mix(in srgb, var(--line) 60%, transparent)' }}>
+          <motion.div key={it.text} variants={bentoItem} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid color-mix(in srgb, var(--line) 60%, transparent)' }}>
             <span style={{ color: 'var(--mut)', fontSize: 11, whiteSpace: 'nowrap' }}>{it.time}</span>
             <span style={{ fontSize: 13 }}>{it.text}</span>
-          </div>
+          </motion.div>
         ))}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
